@@ -28,6 +28,13 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" > /dev/null
       - name: cargo-ndk
         run: cargo install cargo-ndk --locked --version 4.1.2
+      # Paparazzi (screenshot tests only, never in the app) is left out: its plugin wouldn't
+      # resolve, and assembleDebug doesn't compile the tests that use it.
+      - name: Leave out the screenshot-test plugin
+        run: |
+          cd apps/mailcraft-android
+          sed -i '/libs\.plugins\.paparazzi/d' build.gradle.kts app/build.gradle.kts
+          if grep -n 'paparazzi' build.gradle.kts app/build.gradle.kts; then exit 1; fi
       - name: Debug APK
         run: |
           export JAVA_HOME="$JAVA_HOME_21_X64"
