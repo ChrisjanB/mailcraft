@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# A debug-signed APK for sideloading onto a test phone, by hand only
+# (Actions › Android debug APK › Run workflow). Debug-signed, so it installs as-is;
+# not for release, and it holds no secret.
+name: Android debug APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master (pinned by hash) # zizmor: ignore[ref-version-mismatch]
+        with:
+          toolchain: 1.98.1
+          targets: aarch64-linux-android,x86_64-linux-android
+      - name: Android SDK pieces
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" > /dev/null
+      - name: cargo-ndk
+        run: cargo install cargo-ndk --locked --version 4.1.2
+      - name: Debug APK
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          cd apps/mailcraft-android
+          ./gradlew --console=plain --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mailcraft-debug-apk
+          path: apps/mailcraft-android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
